@@ -1,0 +1,18 @@
+<svg width="180" height="48" viewBox="0 0 180 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Rounded Icon Container -->
+  <rect x="0" y="2" width="44" height="44" rx="12" fill="#FFFFFF" />
+  
+  <!-- Mortarboard / Graduation Cap -->
+  <path d="M22 10L35 17L22 24L9 17L22 10Z" fill="#0F3833" />
+  <path d="M32 20.5V26.5C32 26.5 28.5 29.5 22 29.5C15.5 29.5 12 26.5 12 26.5V20.5" stroke="#0F3833" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  <path d="M35 17V27" stroke="#E75A24" stroke-width="2" stroke-linecap="round" />
+  <circle cx="35" cy="27.5" r="1.5" fill="#E75A24" />
+  
+  <!-- Text inside icon -->
+  <text x="22" y="38" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="800" font-size="7" fill="#E75A24">S'COOL</text>
+
+  <!-- Brand Typography -->
+  <text x="54" y="21" font-family="system-ui, sans-serif" font-weight="800" font-size="17" fill="#FFFFFF" letter-spacing="-0.3">Téranga</text>
+  <text x="54" y="38" font-family="system-ui, sans-serif" font-weight="800" font-size="17" fill="#FFFFFF" letter-spacing="-0.3">S'cool</text>
+</svg>
+
