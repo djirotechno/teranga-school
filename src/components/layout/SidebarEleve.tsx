@@ -139,17 +139,22 @@ export function SidebarEleve({ isOpen = false, onClose }: SidebarEleveProps) {
 
         {/* User Card at Bottom */}
         <div className="pt-4 border-t border-white/10">
-          <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-[#14443F] hover:bg-[#184F49] transition-colors cursor-pointer">
+          <Link
+            href="/compte"
+            onClick={onClose}
+            className="flex items-center gap-3 p-2.5 rounded-2xl bg-[#14443F] hover:bg-[#184F49] transition-colors cursor-pointer group"
+            title="Accéder à mon profil"
+          >
             <Avatar initials="AD" size="md" variant="green" />
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-semibold text-white truncate">
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="text-sm font-semibold text-white truncate group-hover:text-[#E75A24] transition-colors">
                 Awa Diop
               </span>
               <span className="text-xs text-[#9DCAC2] font-medium">
-                Élève
+                Élève · Profil & Paramètres
               </span>
             </div>
-          </div>
+          </Link>
         </div>
       </aside>
     </>

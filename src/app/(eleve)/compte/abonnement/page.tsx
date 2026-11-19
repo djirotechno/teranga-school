@@ -1,5 +1,18 @@
-import React from 'react';
+'use client';
 
-export default function Page() {
-  return <div className="p-6">Page en cours de construction</div>;
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function AbonnementRedirectPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/compte?tab=abonnement');
+  }, [router]);
+
+  return (
+    <div className="flex items-center justify-center min-h-[300px] text-stone-500 text-sm">
+      Chargement de l'abonnement...
+    </div>
+  );
 }

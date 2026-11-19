@@ -5,6 +5,7 @@ import { Bell, Menu } from 'lucide-react';
 import SearchBar from '../ui/SearchBar';
 import Avatar from '../ui/Avatar';
 import Logo from '../ui/Logo';
+import ProfileDropdown from './ProfileDropdown';
 
 interface TopBarProps {
   onToggleSidebar?: () => void;
@@ -48,9 +49,13 @@ export function TopBar({
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#E75A24] rounded-full ring-2 ring-[#F8F5EE]" />
         </button>
 
-        <div className="flex items-center gap-2">
-          <Avatar initials={userInitials} name={userName} size="md" variant="green" />
-        </div>
+        {/* Profile Dropdown */}
+        <ProfileDropdown
+          userName={userName}
+          userInitials={userInitials}
+          userEmail="awa.diop@terangaschool.sn"
+          userRole="Élève · Terminale L"
+        />
       </div>
     </header>
   );
