@@ -14,6 +14,11 @@ import {
   Mic,
   Sparkles,
   BookOpen,
+  X,
+  ChevronLeft,
+  ZoomIn,
+  ZoomOut,
+  BookMarked,
 } from 'lucide-react';
 import { MATIERES_DATA, getChapter, ChapterData, LessonItem } from '@/lib/constants/matieres';
 import VideoPlayer from '@/components/media/VideoPlayer';
@@ -34,6 +39,13 @@ export default function CoursVideoPage() {
 
   const [activeTab, setActiveTab] = useState<'cours' | 'exercices' | 'ressources' | 'discussions'>('cours');
   const [downloadNotification, setDownloadNotification] = useState<string | null>(null);
+  const [readingPdf, setReadingPdf] = useState<{
+    title: string;
+    subtitle?: string;
+    matiere: string;
+  } | null>(null);
+  const [zoomLevel, setZoomLevel] = useState<number>(100);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   // Retrieve chapter or dynamic fallback
   const foundChapter = getChapter(matiereSlug, chapitreSlug);
@@ -132,6 +144,16 @@ export default function CoursVideoPage() {
     setTimeout(() => {
       setDownloadNotification(null);
     }, 3500);
+  };
+
+  const handleRead = (title: string, subtitle?: string) => {
+    setReadingPdf({
+      title,
+      subtitle,
+      matiere: chapter.subjectName,
+    });
+    setCurrentPage(1);
+    setZoomLevel(100);
   };
 
   return (
@@ -284,9 +306,19 @@ export default function CoursVideoPage() {
                     subtitle={subtitle}
                     href={lessonHref}
                     isActive={isCurrent}
-                    onClick={
+                    onRead={
+                      lesson.type === 'pdf'
+                        ? () => handleRead(lesson.title, subtitle)
+                        : undefined
+                    }
+                    onDownload={
                       lesson.type === 'pdf'
                         ? () => handleDownload(lesson.title)
+                        : undefined
+                    }
+                    onClick={
+                      lesson.type === 'pdf'
+                        ? () => handleRead(lesson.title, subtitle)
                         : undefined
                     }
                   />
@@ -380,14 +412,26 @@ export default function CoursVideoPage() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleDownload(res.title)}
-                    className="self-end sm:self-auto inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-stone-100 hover:bg-[#E75A24] hover:text-white text-stone-700 transition-all shrink-0"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Télécharger</span>
-                  </button>
+                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleRead(res.title, `PDF · ${res.fileSize}`)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium text-stone-700 bg-stone-100 hover:bg-[#FCEEE7] hover:text-[#C85A2B] active:scale-95 transition-all"
+                      title="Lire le document"
+                    >
+                      <BookOpen className="w-4 h-4 text-[#C85A2B]" />
+                      <span>Lire</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDownload(res.title)}
+                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-stone-100 hover:bg-[#E75A24] hover:text-white text-stone-700 active:scale-95 transition-all"
+                      title="Télécharger le document"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span className="hidden sm:inline">Télécharger</span>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -402,6 +446,193 @@ export default function CoursVideoPage() {
             chapterTitle={chapter.title}
             subjectName={chapter.subjectName}
           />
+        </div>
+      )}
+
+      {/* Reader Modal (Interactive PDF Reading Experience) */}
+      {readingPdf && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-stone-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl border border-stone-200 animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-5 py-4 border-b border-stone-200/80 bg-[#FAF7F2] flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2 rounded-xl bg-[#FCEEE7] text-[#C85A2B] shrink-0">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-stone-200 text-stone-700">
+                      {readingPdf.matiere}
+                    </span>
+                    <span className="text-xs text-stone-400">
+                      {chapter.title}
+                    </span>
+                  </div>
+                  <h2 className="text-base sm:text-lg font-bold text-stone-900 truncate">
+                    {readingPdf.title}
+                  </h2>
+                </div>
+              </div>
+
+              {/* Reader Controls */}
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <div className="hidden sm:flex items-center bg-stone-200/70 rounded-xl p-0.5">
+                  <button
+                    onClick={() => setZoomLevel((z) => Math.max(80, z - 10))}
+                    className="p-1.5 text-stone-600 hover:text-stone-900 hover:bg-white rounded-lg transition-colors"
+                    title="Zoom arrière"
+                  >
+                    <ZoomOut className="w-4 h-4" />
+                  </button>
+                  <span className="text-xs font-semibold px-2 text-stone-600">
+                    {zoomLevel}%
+                  </span>
+                  <button
+                    onClick={() => setZoomLevel((z) => Math.min(140, z + 10))}
+                    className="p-1.5 text-stone-600 hover:text-stone-900 hover:bg-white rounded-lg transition-colors"
+                    title="Zoom avant"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => handleDownload(readingPdf.title)}
+                  className="p-2 text-stone-600 hover:text-[#C85A2B] hover:bg-[#FCEEE7] rounded-xl transition-colors"
+                  title="Télécharger"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={() => setReadingPdf(null)}
+                  className="p-2 text-stone-500 hover:text-stone-900 hover:bg-stone-200/80 rounded-xl transition-colors"
+                  title="Fermer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Document Viewer Body (Scrollable Sheet) */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-[#EFECE6]/70 flex justify-center">
+              <div
+                style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top center' }}
+                className="w-full max-w-2xl bg-white rounded-2xl shadow-md border border-stone-200/90 p-6 sm:p-10 transition-transform duration-150 flex flex-col gap-6"
+              >
+                {/* Academic Header Banner */}
+                <div className="border-b border-stone-200 pb-5 text-center">
+                  <p className="text-[11px] uppercase tracking-wider font-semibold text-stone-400">
+                    République du Sénégal · Espace Élève Téranga S'cool
+                  </p>
+                  <h1 className="text-xl sm:text-2xl font-black text-stone-900 mt-2">
+                    {readingPdf.title}
+                  </h1>
+                  <p className="text-xs font-semibold text-[#C85A2B] mt-1">
+                    {readingPdf.matiere} · {chapter.title}
+                  </p>
+                </div>
+
+                {/* Introduction Box */}
+                <div className="p-4 rounded-xl bg-[#FAF7F2] border-l-4 border-[#C85A2B] text-xs sm:text-sm text-stone-700 leading-relaxed">
+                  <p className="font-semibold text-stone-900 mb-1">Résumé pédagogique officiel</p>
+                  <p>
+                    Ce support de révision officiel synthétise l'ensemble des repères fondamentaux, chronologies et démarches analytiques indispensables à maîtriser pour le Baccalauréat.
+                  </p>
+                </div>
+
+                {/* Content sections based on chapter and title */}
+                <div className="space-y-5">
+                  <div className="space-y-2">
+                    <h3 className="font-bold text-sm sm:text-base text-stone-900 border-b border-stone-100 pb-1">
+                      1. Repères essentiels et définitions clés
+                    </h3>
+                    <ul className="space-y-2 pl-2">
+                      <li className="text-xs sm:text-sm text-stone-700 flex items-start gap-2 leading-relaxed">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#C85A2B] mt-2 shrink-0" />
+                        <span><strong>Concepts cardinaux :</strong> Maîtriser le vocabulaire technique et les notions directrices du programme.</span>
+                      </li>
+                      <li className="text-xs sm:text-sm text-stone-700 flex items-start gap-2 leading-relaxed">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#C85A2B] mt-2 shrink-0" />
+                        <span><strong>Mise en contexte :</strong> Relier systématiquement chaque fait historique, littéraire ou philosophique aux enjeux globaux de l'époque.</span>
+                      </li>
+                      <li className="text-xs sm:text-sm text-stone-700 flex items-start gap-2 leading-relaxed">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#C85A2B] mt-2 shrink-0" />
+                        <span><strong>Articulations logiques :</strong> Veiller à la cohérence de l'argumentation et des transitions dans votre devoir.</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h3 className="font-bold text-sm sm:text-base text-stone-900 border-b border-stone-100 pb-1">
+                      2. Chronologie & Démarches d'analyse
+                    </h3>
+                    <div className="space-y-2">
+                      <div className="p-3 rounded-xl bg-stone-50 border border-stone-200/80 text-xs text-stone-700">
+                        <span className="font-bold text-stone-900">Étape 1 :</span> Analyser les termes clés du sujet et identifier les paradoxes ou ruptures.
+                      </div>
+                      <div className="p-3 rounded-xl bg-stone-50 border border-stone-200/80 text-xs text-stone-700">
+                        <span className="font-bold text-stone-900">Étape 2 :</span> Mobiliser des faits précis, des citations exactes ou des données chiffrées.
+                      </div>
+                      <div className="p-3 rounded-xl bg-stone-50 border border-stone-200/80 text-xs text-stone-700">
+                        <span className="font-bold text-stone-900">Étape 3 :</span> Formuler une réponse nuancée et structurée en plusieurs axes équilibrés.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-amber-50/80 border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
+                    <BookMarked className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold">Conseil de l'enseignant : </span>
+                      Relisez régulièrement cette fiche pour consolider vos acquis avant les épreuves d'entraînement et le devoir sur table.
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sheet Footer */}
+                <div className="pt-4 border-t border-stone-100 flex items-center justify-between text-xs text-stone-400">
+                  <span>Page {currentPage} sur 4</span>
+                  <span>Téranga S'cool — Fiche officielle</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Bottom Bar */}
+            <div className="px-5 py-3 border-t border-stone-200/80 bg-white flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-50 disabled:opacity-40 transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span className="hidden sm:inline">Précédent</span>
+                </button>
+                <span className="text-xs text-stone-600 font-medium">
+                  Page {currentPage} / 4
+                </span>
+                <button
+                  disabled={currentPage >= 4}
+                  onClick={() => setCurrentPage((p) => Math.min(4, p + 1))}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-50 disabled:opacity-40 transition-colors"
+                >
+                  <span className="hidden sm:inline">Suivant</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleDownload(readingPdf.title)}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-[#E75A24] hover:bg-[#d44f1c] text-white text-xs sm:text-sm font-semibold shadow-xs transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Télécharger</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
