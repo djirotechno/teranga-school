@@ -11,12 +11,18 @@ interface TopBarProps {
   onToggleSidebar?: () => void;
   userName?: string;
   userInitials?: string;
+  userRole?: string;
+  userEmail?: string;
+  compact?: boolean;
 }
 
 export function TopBar({
   onToggleSidebar,
   userName = "Awa Diop",
   userInitials = "AD",
+  userRole = "Élève · Terminale L",
+  userEmail = "awa.diop@terangaschool.sn",
+  compact = false,
 }: TopBarProps) {
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between gap-4 py-3 px-4 sm:px-6 bg-[#F8F5EE]/95 backdrop-blur-sm border-b border-[#EAE3D6]/70">
@@ -53,8 +59,9 @@ export function TopBar({
         <ProfileDropdown
           userName={userName}
           userInitials={userInitials}
-          userEmail="awa.diop@terangaschool.sn"
-          userRole="Élève · Terminale L"
+          userEmail={userEmail}
+          userRole={userRole}
+          compact={compact}
         />
       </div>
     </header>

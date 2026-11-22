@@ -15,6 +15,7 @@ interface ProfileDropdownProps {
   userInitials?: string;
   userEmail?: string;
   userRole?: string;
+  compact?: boolean;
 }
 
 export function ProfileDropdown({
@@ -22,6 +23,7 @@ export function ProfileDropdown({
   userInitials = 'AD',
   userEmail = 'awa.diop@terangaschool.sn',
   userRole = 'Élève · Terminale L',
+  compact = false,
 }: ProfileDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -71,7 +73,9 @@ export function ProfileDropdown({
         aria-expanded={isOpen}
         aria-haspopup="true"
         aria-label="Menu du profil utilisateur"
-        className="flex items-center gap-2 p-1.5 sm:px-2.5 sm:py-1.5 rounded-2xl hover:bg-stone-200/60 focus:outline-none focus:ring-2 focus:ring-[#E75A24]/30 transition-all select-none cursor-pointer"
+        className={`flex items-center gap-2 ${
+          compact ? 'p-1 rounded-full' : 'p-1.5 sm:px-2.5 sm:py-1.5 rounded-2xl'
+        } hover:bg-stone-200/60 focus:outline-none focus:ring-2 focus:ring-[#E75A24]/30 transition-all select-none cursor-pointer`}
       >
         <Avatar
           initials={userInitials}
@@ -80,20 +84,24 @@ export function ProfileDropdown({
           variant="green"
         />
 
-        <div className="hidden sm:flex flex-col text-left leading-tight">
-          <span className="text-xs sm:text-sm font-bold text-stone-900 truncate max-w-[120px]">
-            {userName}
-          </span>
-          <span className="text-[11px] text-stone-500 font-medium">
-            {userRole.split('·')[0].trim()}
-          </span>
-        </div>
+        {!compact && (
+          <>
+            <div className="hidden sm:flex flex-col text-left leading-tight">
+              <span className="text-xs sm:text-sm font-bold text-stone-900 truncate max-w-[120px]">
+                {userName}
+              </span>
+              <span className="text-[11px] text-stone-500 font-medium">
+                {userRole.split('·')[0].trim()}
+              </span>
+            </div>
 
-        <ChevronDown
-          className={`w-4 h-4 text-stone-400 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-stone-700' : ''
-          }`}
-        />
+            <ChevronDown
+              className={`w-4 h-4 text-stone-400 transition-transform duration-200 ${
+                isOpen ? 'rotate-180 text-stone-700' : ''
+              }`}
+            />
+          </>
+        )}
       </button>
 
       {/* Dropdown Menu */}

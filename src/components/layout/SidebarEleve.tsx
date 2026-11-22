@@ -70,9 +70,8 @@ export function SidebarEleve({ isOpen = false, onClose }: SidebarEleveProps) {
 
       {/* Sidebar container */}
       <aside
-        className={`fixed lg:sticky top-0 h-screen z-50 flex flex-col justify-between w-64 bg-[#0F3833] text-white p-5 transition-transform duration-300 ease-in-out ${
-          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        } shrink-0 select-none overflow-y-auto`}
+        className={`fixed lg:sticky top-0 h-screen z-50 flex flex-col justify-between w-64 bg-[#0F3833] text-white p-5 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          } shrink-0 select-none overflow-y-auto`}
       >
         <div className="flex flex-col gap-8">
           {/* Top Logo & Brand */}
@@ -109,11 +108,10 @@ export function SidebarEleve({ isOpen = false, onClose }: SidebarEleveProps) {
                   key={item.href}
                   href={item.href}
                   onClick={onClose}
-                  className={`flex items-center justify-between px-3.5 py-3 rounded-2xl text-sm font-medium transition-all duration-150 ${
-                    isActive
-                      ? 'bg-[#E75A24] text-white shadow-md'
-                      : 'text-white/80 hover:text-white hover:bg-white/10'
-                  }`}
+                  className={`flex items-center justify-between px-3.5 py-3 rounded-2xl text-sm font-medium transition-all duration-150 ${isActive
+                    ? 'bg-[#E75A24] text-white shadow-md'
+                    : 'text-white/80 hover:text-white hover:bg-white/10'
+                    }`}
                 >
                   <div className="flex items-center gap-3.5">
                     <Icon className="w-5 h-5 shrink-0" strokeWidth={2} />
@@ -122,11 +120,10 @@ export function SidebarEleve({ isOpen = false, onClose }: SidebarEleveProps) {
 
                   {item.badge && (
                     <span
-                      className={`text-xs px-2 py-0.5 rounded-full font-bold shadow-sm ${
-                        isActive
-                          ? 'bg-white text-[#E75A24]'
-                          : 'bg-[#E75A24] text-white'
-                      }`}
+                      className={`text-xs px-2 py-0.5 rounded-full font-bold shadow-sm ${isActive
+                        ? 'bg-white text-[#E75A24]'
+                        : 'bg-[#E75A24] text-white'
+                        }`}
                     >
                       {item.badge}
                     </span>
