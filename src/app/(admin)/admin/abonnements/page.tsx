@@ -1,279 +1,310 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   CreditCard,
   Clock,
   ChevronRight,
   Check,
-  ChevronDown,
-  Calendar,
   X,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { useCurrentProfile } from '@/hooks/useCurrentProfile';
+import type { Enums } from '@/types/database';
 
-interface SubscriptionItem {
+interface SubscriptionRow {
   id: string;
-  name: string;
-  detail: string;
-  status: 'Actif' | 'En attente' | 'Expiré';
-  iconType: 'card' | 'clock';
+  eleve_id: string;
+  eleveName: string;
+  plan_nom: string;
+  statut: Enums<'abonnement_status'>;
+  date_fin: string | null;
+  montant_xof: number;
+  methode_paiement: Enums<'paiement_methode'>;
+  paytech_ref: string | null;
 }
 
-const initialSubscriptions: SubscriptionItem[] = [
-  {
-    id: '1',
-    name: 'Awa Diop',
-    detail: 'Expire le 31/12/2026',
-    status: 'Actif',
-    iconType: 'card',
-  },
-  {
-    id: '2',
-    name: 'Moussa S.',
-    detail: 'Paiement à vérifier',
-    status: 'En attente',
-    iconType: 'clock',
-  },
-];
+interface StudentOption {
+  id: string;
+  full_name: string;
+}
+
+const STATUS_LABEL: Record<Enums<'abonnement_status'>, string> = {
+  actif: 'Actif',
+  en_attente: 'En attente',
+  a_renouveler: 'À renouveler',
+  expire: 'Expiré',
+};
+
+function formatDateFr(iso?: string | null): string {
+  if (!iso) return 'Paiement à vérifier';
+  return `Expire le ${new Date(iso).toLocaleDateString('fr-SN')}`;
+}
 
 export default function AdminAbonnementsPage() {
-  const [subscriptions, setSubscriptions] = useState<SubscriptionItem[]>(initialSubscriptions);
-  const [activeCount, setActiveCount] = useState(106);
-  const [toRenewCount, setToRenewCount] = useState(12);
+  const { profile } = useCurrentProfile();
+  const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([]);
+  const [students, setStudents] = useState<StudentOption[]>([]);
+  const [selectedEleveId, setSelectedEleveId] = useState('');
+  const [selectedDetailModal, setSelectedDetailModal] = useState<SubscriptionRow | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const [selectedUser, setSelectedUser] = useState('Moussa S.');
-  const [isSelectOpen, setIsSelectOpen] = useState(false);
-  const [selectedDetailModal, setSelectedDetailModal] = useState<SubscriptionItem | null>(null);
-
-  // Toast notification
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  const showToast = (message: string) => {
-    setToastMessage(message);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 3500);
+  const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
+  const showToast = (text: string, error = false) => {
+    setToast({ text, error });
+    setTimeout(() => setToast(null), 3500);
   };
 
-  const availableAccounts = [
-    'Moussa S.',
-    'Awa Diop',
-    'M. Diop',
-    'Mme Ndiaye',
-  ];
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const supabase = createClient();
+      const [{ data: aboData }, { data: eleveData }] = await Promise.all([
+        supabase
+          .from('abonnements')
+          .select(
+            `
+            id,
+            eleve_id,
+            plan_nom,
+            statut,
+            date_fin,
+            montant_xof,
+            methode_paiement,
+            paytech_ref,
+            eleve:profiles!abonnements_eleve_id_fkey ( full_name )
+          `
+          )
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('profiles')
+          .select('id, full_name')
+          .eq('role', 'eleve')
+          .order('full_name', { ascending: true }),
+      ]);
 
-  const handleValidateAccess = () => {
-    // Check if the selected user already has an entry
-    const existingIndex = subscriptions.findIndex((s) => s.name === selectedUser);
+      const mapped: SubscriptionRow[] = (aboData ?? []).map((a) => ({
+        id: a.id,
+        eleve_id: a.eleve_id,
+        eleveName: (a.eleve as unknown as { full_name: string } | null)?.full_name ?? 'Élève',
+        plan_nom: a.plan_nom,
+        statut: a.statut,
+        date_fin: a.date_fin,
+        montant_xof: a.montant_xof,
+        methode_paiement: a.methode_paiement,
+        paytech_ref: a.paytech_ref,
+      }));
 
-    if (existingIndex !== -1) {
-      const existing = subscriptions[existingIndex];
-      const wasPending = existing.status !== 'Actif';
-
-      const updatedList = [...subscriptions];
-      updatedList[existingIndex] = {
-        ...existing,
-        detail: 'Expire le 31/12/2027',
-        status: 'Actif',
-        iconType: 'card',
-      };
-      setSubscriptions(updatedList);
-
-      if (wasPending) {
-        setActiveCount((prev) => prev + 1);
-        setToRenewCount((prev) => Math.max(0, prev - 1));
+      setSubscriptions(mapped);
+      const stuList = eleveData ?? [];
+      setStudents(stuList);
+      if (stuList.length > 0 && !selectedEleveId) {
+        const pending = mapped.find((m) => m.statut === 'en_attente');
+        setSelectedEleveId(pending?.eleve_id ?? stuList[0].id);
       }
-      showToast(`Accès validé et prolongé avec succès pour ${selectedUser} (jusqu'au 31/12/2027) !`);
-    } else {
-      const newSub: SubscriptionItem = {
-        id: Date.now().toString(),
-        name: selectedUser,
-        detail: 'Expire le 31/12/2027',
-        status: 'Actif',
-        iconType: 'card',
-      };
-      setSubscriptions([...subscriptions, newSub]);
-      setActiveCount((prev) => prev + 1);
-      showToast(`Nouvel accès validé pour ${selectedUser} !`);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedEleveId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const activeCount = subscriptions.filter((s) => s.statut === 'actif').length;
+  const pendingCount = subscriptions.filter((s) => s.statut !== 'actif').length;
+
+  const handleValidateForStudent = async (eleveId: string) => {
+    if (!profile || !eleveId) return;
+    setSaving(true);
+    try {
+      const supabase = createClient();
+      const now = new Date();
+      const nextYear = new Date(now);
+      nextYear.setFullYear(nextYear.getFullYear() + 1);
+
+      const existing = subscriptions.find((s) => s.eleve_id === eleveId);
+
+      if (existing) {
+        const { error } = await supabase
+          .from('abonnements')
+          .update({
+            statut: 'actif',
+            date_debut: now.toISOString(),
+            date_fin: nextYear.toISOString(),
+            validated_by: profile.id,
+            validated_at: now.toISOString(),
+          })
+          .eq('id', existing.id);
+
+        if (error) {
+          showToast(`Erreur : ${error.message}`, true);
+          return;
+        }
+      } else {
+        const { error } = await supabase.from('abonnements').insert({
+          eleve_id: eleveId,
+          plan_nom: 'Pack Terminale Annuel',
+          statut: 'actif',
+          date_debut: now.toISOString(),
+          date_fin: nextYear.toISOString(),
+          montant_xof: 15000,
+          methode_paiement: 'manuel',
+          paytech_ref: `MAN-${Date.now().toString().slice(-6)}`,
+          validated_by: profile.id,
+          validated_at: now.toISOString(),
+        });
+
+        if (error) {
+          showToast(`Erreur : ${error.message}`, true);
+          return;
+        }
+      }
+
+      const name = students.find((s) => s.id === eleveId)?.full_name ?? 'l’élève';
+      setSelectedDetailModal(null);
+      await loadData();
+      showToast(`Accès validé et prolongé d'un an pour ${name} !`);
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#0F3833] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5 duration-200">
-          <Check className="w-5 h-5 text-emerald-400" />
-          <span className="text-sm font-medium">{toastMessage}</span>
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 ${
+            toast.error ? 'bg-red-700' : 'bg-[#0F3833]'
+          }`}
+        >
+          {toast.error ? (
+            <AlertCircle className="w-5 h-5 text-red-200" />
+          ) : (
+            <Check className="w-5 h-5 text-emerald-400" />
+          )}
+          <span className="text-sm font-medium">{toast.text}</span>
         </div>
       )}
 
-      {/* Page Header */}
       <div>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-[#111827] tracking-tight">
           Abonnements
         </h1>
-        <p className="text-stone-500 text-sm sm:text-base mt-1.5 font-normal">
-          Suivre les accès payants et leur expiration.
+        <p className="text-stone-500 text-sm sm:text-base mt-1.5">
+          Suivre les accès payants (Wave / Orange Money) et valider les activations.
         </p>
       </div>
 
-      {/* KPI Stats Cards */}
+      {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
-        {/* Actifs */}
-        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-stone-200/70 shadow-xs flex flex-col justify-center transition-all hover:shadow-sm hover:border-stone-300">
-          <div className="text-3xl sm:text-4xl font-extrabold text-[#0B2B27] tracking-tight">
-            {activeCount}
-          </div>
-          <div className="text-stone-500 text-sm font-medium mt-1.5">
-            Actifs
-          </div>
+        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-stone-200/70 shadow-xs">
+          <div className="text-3xl sm:text-4xl font-extrabold text-[#0B2B27]">{activeCount}</div>
+          <div className="text-stone-500 text-sm font-medium mt-1.5">Actifs</div>
         </div>
-
-        {/* À renouveler */}
-        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-stone-200/70 shadow-xs flex flex-col justify-center transition-all hover:shadow-sm hover:border-stone-300">
-          <div className="text-3xl sm:text-4xl font-extrabold text-[#0B2B27] tracking-tight">
-            {toRenewCount}
-          </div>
+        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-stone-200/70 shadow-xs">
+          <div className="text-3xl sm:text-4xl font-extrabold text-[#E75A24]">{pendingCount}</div>
           <div className="text-stone-500 text-sm font-medium mt-1.5">
-            À renouveler
+            En attente / À renouveler
           </div>
         </div>
       </div>
 
-      {/* Subscriptions List */}
-      <div className="flex flex-col gap-3.5">
-        {subscriptions.map((item) => {
-          const Icon = item.iconType === 'card' ? CreditCard : Clock;
-
-          return (
-            <div
-              key={item.id}
-              onClick={() => setSelectedDetailModal(item)}
-              className="group flex items-center justify-between p-4 sm:p-5 bg-white rounded-2xl border border-stone-200/70 shadow-xs hover:border-stone-300 hover:shadow-sm hover:bg-[#FAF8F5]/60 transition-all duration-150 cursor-pointer"
-            >
-              {/* Left icon + info */}
-              <div className="flex items-center gap-4 min-w-0">
-                <div className="w-12 h-12 rounded-2xl bg-[#E8F1EE] text-[#0F3833] flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                  <Icon className="w-6 h-6" strokeWidth={1.8} />
+      {/* List */}
+      {isLoading ? (
+        <div className="py-12 flex items-center justify-center gap-2 text-stone-500 text-sm">
+          <Loader2 className="w-5 h-5 animate-spin text-[#E75A24]" />
+          <span>Chargement des abonnements...</span>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3.5">
+          {subscriptions.map((item) => {
+            const Icon = item.statut === 'actif' ? CreditCard : Clock;
+            return (
+              <div
+                key={item.id}
+                onClick={() => setSelectedDetailModal(item)}
+                className="group flex items-center justify-between p-4 sm:p-5 bg-white rounded-2xl border border-stone-200/70 shadow-xs hover:border-stone-300 hover:shadow-sm transition-all cursor-pointer"
+              >
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="w-12 h-12 rounded-2xl bg-[#E8F1EE] text-[#0F3833] flex items-center justify-center shrink-0">
+                    <Icon className="w-6 h-6" strokeWidth={1.8} />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-bold text-[#111827] text-base truncate">
+                      {item.eleveName}
+                    </span>
+                    <span className="text-sm text-stone-500 mt-0.5 truncate">
+                      {item.plan_nom} · {formatDateFr(item.date_fin)}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="font-bold text-[#111827] text-base truncate group-hover:text-[#0F3833] transition-colors">
-                    {item.name}
+
+                <div className="flex items-center gap-2 shrink-0 pl-3">
+                  <span
+                    className={`px-3.5 py-1 rounded-full text-xs font-semibold ${
+                      item.statut === 'actif'
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : 'bg-amber-50 text-amber-700'
+                    }`}
+                  >
+                    {STATUS_LABEL[item.statut]}
                   </span>
-                  <span className="text-sm text-stone-500 mt-0.5 truncate">
-                    {item.detail}
-                  </span>
+                  <ChevronRight className="w-5 h-5 text-stone-400" />
                 </div>
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              {/* Right pill badge + chevron */}
-              <div className="flex items-center gap-2 shrink-0 pl-3">
-                <span className="px-3.5 py-1 rounded-full bg-[#ECE5D8]/80 text-stone-700 text-xs font-medium">
-                  {item.status}
-                </span>
-                <ChevronRight className="w-5 h-5 text-stone-400 group-hover:text-stone-600 group-hover:translate-x-0.5 transition-transform" />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Action manuelle Section */}
-      <div className="bg-white rounded-3xl border border-stone-200/70 p-6 sm:p-7 shadow-xs">
-        <h2 className="text-lg sm:text-xl font-bold text-[#111827] tracking-tight mb-4">
-          Action manuelle
+      {/* Action manuelle */}
+      <div className="bg-white rounded-3xl border border-stone-200/70 p-6 sm:p-7 shadow-xs space-y-4">
+        <h2 className="text-lg sm:text-xl font-bold text-[#111827]">
+          Validation manuelle d&apos;accès
         </h2>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-2">
-              Compte
-            </label>
-
-            {/* Custom Select Dropdown */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setIsSelectOpen((prev) => !prev)}
-                className="w-full bg-[#FAF8F5]/40 hover:bg-[#FAF8F5] border border-stone-200/90 rounded-2xl px-4 py-3 sm:py-3.5 text-sm text-stone-800 flex items-center justify-between text-left transition-colors focus:outline-none focus:border-stone-400"
-              >
-                <span className="font-medium text-stone-900">{selectedUser}</span>
-                <ChevronDown className="w-4 h-4 text-stone-500 transition-transform duration-200" />
-              </button>
-
-              {isSelectOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-30"
-                    onClick={() => setIsSelectOpen(false)}
-                  />
-                  <div className="absolute left-0 right-0 mt-2 bg-white border border-stone-200 rounded-2xl shadow-lg z-40 py-2 animate-in fade-in-50 zoom-in-95 duration-100">
-                    {availableAccounts.map((account) => (
-                      <button
-                        key={account}
-                        type="button"
-                        onClick={() => {
-                          setSelectedUser(account);
-                          setIsSelectOpen(false);
-                        }}
-                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between transition-colors ${
-                          selectedUser === account
-                            ? 'text-[#0F3833] font-bold bg-[#E8F1EE]/70'
-                            : 'text-stone-700 hover:bg-stone-50'
-                        }`}
-                      >
-                        <span>{account}</span>
-                        {selectedUser === account && (
-                          <Check className="w-4 h-4 text-[#0F3833]" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Action button */}
-          <div>
-            <button
-              type="button"
-              onClick={handleValidateAccess}
-              className="inline-flex items-center gap-2 bg-[#E75A24] hover:bg-[#D04D1B] text-white px-5 sm:px-6 py-3 rounded-2xl font-semibold text-sm shadow-xs hover:shadow-sm transition-all duration-150 cursor-pointer"
-            >
-              <Check className="w-4 h-4 stroke-[2.5]" />
-              <span>Valider / prolonger l&apos;accès</span>
-            </button>
-          </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-2">
+            Compte élève
+          </label>
+          <select
+            value={selectedEleveId}
+            onChange={(e) => setSelectedEleveId(e.target.value)}
+            className="w-full bg-[#FAF8F5] border border-stone-200 rounded-2xl px-4 py-3 text-sm text-stone-900 focus:outline-none focus:border-[#0F3833]"
+          >
+            {students.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.full_name}
+              </option>
+            ))}
+          </select>
         </div>
+
+        <button
+          type="button"
+          onClick={() => handleValidateForStudent(selectedEleveId)}
+          disabled={saving || !selectedEleveId}
+          className="inline-flex items-center gap-2 bg-[#E75A24] hover:bg-[#D04D1B] text-white px-6 py-3 rounded-2xl font-semibold text-sm shadow-xs transition-all cursor-pointer disabled:opacity-60"
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+          <span>Valider / prolonger l&apos;accès (1 an)</span>
+        </button>
       </div>
 
-      {/* Subscription Details Modal */}
+      {/* Detail Modal */}
       {selectedDetailModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
-          <div
-            className="fixed inset-0"
-            onClick={() => setSelectedDetailModal(null)}
-          />
-          <div className="relative bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-stone-200 z-10 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="fixed inset-0" onClick={() => setSelectedDetailModal(null)} />
+          <div className="relative bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-stone-200 z-10">
             <div className="flex items-center justify-between pb-4 border-b border-stone-100">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#E8F1EE] text-[#0F3833] flex items-center justify-center">
-                  <CreditCard className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-[#111827]">
-                    Détails de l&apos;abonnement
-                  </h3>
-                  <p className="text-xs text-stone-500">
-                    Compte : {selectedDetailModal.name}
-                  </p>
-                </div>
-              </div>
+              <h3 className="text-xl font-bold text-[#111827]">Détails de l&apos;abonnement</h3>
               <button
                 onClick={() => setSelectedDetailModal(null)}
-                className="text-stone-400 hover:text-stone-600 p-1 rounded-lg hover:bg-stone-100 transition-colors"
+                className="text-stone-400 hover:text-stone-600 p-1 rounded-lg hover:bg-stone-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -282,40 +313,40 @@ export default function AdminAbonnementsPage() {
             <div className="py-4 space-y-3 text-sm">
               <div className="flex justify-between py-2 border-b border-stone-100">
                 <span className="text-stone-500">Bénéficiaire</span>
-                <span className="font-semibold text-stone-900">{selectedDetailModal.name}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-stone-100">
-                <span className="text-stone-500">Statut actuel</span>
-                <span className="px-3 py-0.5 rounded-full bg-[#ECE5D8] text-stone-800 text-xs font-medium">
-                  {selectedDetailModal.status}
-                </span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-stone-100">
-                <span className="text-stone-500">Information / Échéance</span>
-                <span className="font-medium text-stone-800">{selectedDetailModal.detail}</span>
+                <span className="font-semibold text-stone-900">{selectedDetailModal.eleveName}</span>
               </div>
               <div className="flex justify-between py-2 border-b border-stone-100">
                 <span className="text-stone-500">Formule</span>
-                <span className="font-medium text-stone-800">Accès Premium annuel</span>
+                <span className="font-medium text-stone-800">{selectedDetailModal.plan_nom}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-stone-100">
+                <span className="text-stone-500">Montant</span>
+                <span className="font-bold text-stone-900">
+                  {selectedDetailModal.montant_xof.toLocaleString('fr-FR')} FCFA
+                </span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-stone-100">
+                <span className="text-stone-500">Référence</span>
+                <span className="font-mono text-xs text-stone-700">
+                  {selectedDetailModal.paytech_ref ?? '—'}
+                </span>
               </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-3">
               <button
                 onClick={() => setSelectedDetailModal(null)}
-                className="px-4 py-2.5 rounded-xl text-sm font-medium text-stone-600 hover:bg-stone-100 transition-colors"
+                className="px-4 py-2.5 rounded-xl text-sm font-medium text-stone-600 hover:bg-stone-100 cursor-pointer"
               >
                 Fermer
               </button>
               <button
-                onClick={() => {
-                  setSelectedUser(selectedDetailModal.name);
-                  setSelectedDetailModal(null);
-                  handleValidateAccess();
-                }}
-                className="px-5 py-2.5 rounded-xl bg-[#E75A24] hover:bg-[#D04D1B] text-white text-sm font-semibold shadow-xs transition-colors"
+                onClick={() => handleValidateForStudent(selectedDetailModal.eleve_id)}
+                disabled={saving}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#E75A24] hover:bg-[#D04D1B] text-white text-sm font-semibold cursor-pointer disabled:opacity-60"
               >
-                Prolonger l&apos;accès
+                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                <span>Valider / prolonger</span>
               </button>
             </div>
           </div>
