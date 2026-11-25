@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   User,
   Settings,
@@ -9,6 +10,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import Avatar from '../ui/Avatar';
+import { createClient } from '@/lib/supabase/client';
 
 interface ProfileDropdownProps {
   userName?: string;
@@ -25,8 +27,25 @@ export function ProfileDropdown({
   userRole = 'Élève · Terminale L',
   compact = false,
 }: ProfileDropdownProps) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch {
+      // Redirection vers /connexion même si les variables Supabase ne sont pas configurées
+    } finally {
+      setIsOpen(false);
+      setIsSigningOut(false);
+      router.push('/connexion');
+      router.refresh();
+    }
+  };
 
   // Close when clicking outside
   useEffect(() => {
@@ -182,23 +201,24 @@ export function ProfileDropdown({
           <div className="h-px bg-stone-200/80 my-2 mx-1" />
 
           {/* Logout Action */}
-          <Link
-            href="/connexion"
-            onClick={closeDropdown}
-            className="flex items-center gap-3 px-3 py-2 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors group"
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={isSigningOut}
+            className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors group cursor-pointer disabled:opacity-60"
           >
             <div className="w-8 h-8 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0 group-hover:bg-red-100 transition-colors">
               <LogOut className="w-4 h-4" />
             </div>
             <div className="flex flex-col">
               <span className="text-xs sm:text-sm font-bold">
-                Se déconnecter
+                {isSigningOut ? 'Déconnexion...' : 'Se déconnecter'}
               </span>
               <span className="text-[10px] text-red-400">
                 Fermer la session en cours
               </span>
             </div>
-          </Link>
+          </button>
         </div>
       )}
     </div>

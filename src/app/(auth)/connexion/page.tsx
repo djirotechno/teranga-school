@@ -1,33 +1,94 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { User, Lock, Eye, EyeOff } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { getHomePathForRole, type UserRole } from '@/types/user';
 
-export default function ConnexionPage() {
+function formatSenegalPhone(raw: string): string {
+  const digits = raw.replace(/[\s\-().]/g, '');
+  if (digits.startsWith('+')) return digits;
+  if (digits.startsWith('00221')) return `+${digits.slice(2)}`;
+  if (digits.startsWith('221')) return `+${digits}`;
+  return `+221${digits}`;
+}
+
+function ConnexionForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextParam = searchParams.get('next');
+  const errorParam = searchParams.get('error');
+
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(
+    errorParam === 'compte_suspendu'
+      ? 'Ton compte est temporairement suspendu. Contacte le support Téranga S\'cool.'
+      : errorParam === 'auth_callback_failed'
+      ? 'Le lien de confirmation ou de réinitialisation est invalide ou expiré.'
+      : null
+  );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg(null);
     setIsLoading(true);
-    // Redirection directe vers la page d'accueil
-    setTimeout(() => {
-      router.push('/accueil');
-    }, 200);
+
+    try {
+      const supabase = createClient();
+      const trimmed = identifier.trim();
+      const isEmail = trimmed.includes('@');
+
+      const credentials = isEmail
+        ? { email: trimmed.toLowerCase(), password }
+        : { phone: formatSenegalPhone(trimmed), password };
+
+      const { data, error } = await supabase.auth.signInWithPassword(credentials);
+
+      if (error || !data.user) {
+        if (error?.message?.toLowerCase().includes('email not confirmed')) {
+          setErrorMsg(
+            'Ton adresse e-mail n\'est pas encore confirmée. Vérifie ta boîte de réception.'
+          );
+        } else {
+          setErrorMsg('Identifiant ou mot de passe incorrect.');
+        }
+        return;
+      }
+
+      // Redirection vers le paramètre ?next= s'il est interne, sinon selon le rôle
+      if (nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//')) {
+        router.push(nextParam);
+        router.refresh();
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .single();
+
+      const target = getHomePathForRole(profile?.role as UserRole | undefined);
+      router.push(target);
+      router.refresh();
+    } catch {
+      setErrorMsg('Impossible de se connecter pour le moment. Vérifie ta connexion.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="w-full">
       {/* En-tête du formulaire */}
       <div className="mb-8">
-        {/* Petit logo en haut du formulaire */}
         <div className="w-12 h-12 rounded-2xl bg-white shadow-xs border border-stone-200/80 p-1 flex items-center justify-center mb-5">
           <Image
             src="/images/logo-teranga.jpeg"
@@ -47,9 +108,15 @@ export default function ConnexionPage() {
         </p>
       </div>
 
+      {/* Message d'erreur */}
+      {errorMsg && (
+        <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-medium text-red-700">
+          {errorMsg}
+        </div>
+      )}
+
       {/* Formulaire de connexion */}
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Champ Téléphone ou Email */}
         <div>
           <label className="block text-xs font-semibold text-stone-700 mb-1.5">
             Téléphone ou adresse e-mail
@@ -62,14 +129,14 @@ export default function ConnexionPage() {
               type="text"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="awa.diop@exemple.sn"
+              placeholder="awa.diop@terangascool.sn"
               required
+              autoComplete="username"
               className="w-full pl-10 pr-4 py-2.5 sm:py-3 text-sm bg-white rounded-xl border border-stone-200 text-stone-900 placeholder:text-stone-400 focus:outline-hidden focus:ring-2 focus:ring-[#E75A24]/20 focus:border-[#E75A24] transition-all"
             />
           </div>
         </div>
 
-        {/* Champ Mot de passe */}
         <div>
           <label className="block text-xs font-semibold text-stone-700 mb-1.5">
             Mot de passe
@@ -84,6 +151,7 @@ export default function ConnexionPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••••"
               required
+              autoComplete="current-password"
               className="w-full pl-10 pr-10 py-2.5 sm:py-3 text-sm bg-white rounded-xl border border-stone-200 text-stone-900 placeholder:text-stone-400 focus:outline-hidden focus:ring-2 focus:ring-[#E75A24]/20 focus:border-[#E75A24] transition-all"
             />
             <button
@@ -97,7 +165,6 @@ export default function ConnexionPage() {
           </div>
         </div>
 
-        {/* Options : Se souvenir de moi & Mot de passe oublié */}
         <div className="flex items-center justify-between pt-1">
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <input
@@ -119,7 +186,6 @@ export default function ConnexionPage() {
           </Link>
         </div>
 
-        {/* Bouton Se connecter */}
         <button
           type="submit"
           disabled={isLoading}
@@ -132,7 +198,6 @@ export default function ConnexionPage() {
         </button>
       </form>
 
-      {/* Lien vers la page de création de compte */}
       <div className="mt-8 text-center text-xs sm:text-sm text-stone-600">
         Pas encore de compte ?{' '}
         <Link
@@ -143,5 +208,13 @@ export default function ConnexionPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function ConnexionPage() {
+  return (
+    <Suspense fallback={<div className="w-full py-12 text-center text-sm text-stone-500">Chargement...</div>}>
+      <ConnexionForm />
+    </Suspense>
   );
 }
