@@ -3,9 +3,9 @@
 import React from 'react';
 import { Bell, Menu } from 'lucide-react';
 import SearchBar from '../ui/SearchBar';
-import Avatar from '../ui/Avatar';
 import Logo from '../ui/Logo';
 import ProfileDropdown from './ProfileDropdown';
+import { useCurrentProfile } from '@/hooks/useCurrentProfile';
 
 interface TopBarProps {
   onToggleSidebar?: () => void;
@@ -18,12 +18,18 @@ interface TopBarProps {
 
 export function TopBar({
   onToggleSidebar,
-  userName = "Awa Diop",
-  userInitials = "AD",
-  userRole = "Élève · Terminale L",
-  userEmail = "awa.diop@terangaschool.sn",
+  userName = "Chargement...",
+  userInitials = "TS",
+  userRole = "Élève",
+  userEmail = "",
   compact = false,
 }: TopBarProps) {
+  const { profile, initials, roleLabel } = useCurrentProfile();
+
+  const displayName = profile?.full_name ?? userName;
+  const displayInitials = profile ? initials : userInitials;
+  const displayRole = profile ? roleLabel : userRole;
+  const displayEmail = profile?.email ?? profile?.phone ?? userEmail;
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between gap-4 py-3 px-4 sm:px-6 bg-[#F8F5EE]/95 backdrop-blur-sm border-b border-[#EAE3D6]/70">
       {/* Mobile sidebar toggle button + Mobile Brand Logo */}
@@ -57,10 +63,10 @@ export function TopBar({
 
         {/* Profile Dropdown */}
         <ProfileDropdown
-          userName={userName}
-          userInitials={userInitials}
-          userEmail={userEmail}
-          userRole={userRole}
+          userName={displayName}
+          userInitials={displayInitials}
+          userEmail={displayEmail}
+          userRole={displayRole}
           compact={compact}
         />
       </div>

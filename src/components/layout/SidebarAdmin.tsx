@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react';
+import { useCurrentProfile } from '@/hooks/useCurrentProfile';
 
 interface SidebarAdminProps {
   isOpen?: boolean;
@@ -20,6 +21,7 @@ interface SidebarAdminProps {
 
 export function SidebarAdmin({ isOpen = false, onClose }: SidebarAdminProps) {
   const pathname = usePathname();
+  const { profile, initials } = useCurrentProfile();
 
   const navItems = [
     {
@@ -133,19 +135,24 @@ export function SidebarAdmin({ isOpen = false, onClose }: SidebarAdminProps) {
 
         {/* User Card at Bottom */}
         <div className="pt-4">
-          <div className="flex items-center gap-3 p-3 rounded-2xl bg-[#133F39] hover:bg-[#184F49] transition-colors cursor-pointer group">
+          <Link
+            href="/compte"
+            onClick={onClose}
+            className="flex items-center gap-3 p-3 rounded-2xl bg-[#133F39] hover:bg-[#184F49] transition-colors cursor-pointer group"
+            title="Mon profil administrateur"
+          >
             <div className="w-10 h-10 rounded-full bg-[#D6EADB] text-[#14443F] font-bold text-sm flex items-center justify-center shrink-0">
-              TS
+              {initials}
             </div>
             <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-sm font-semibold text-white truncate">
-                Admin
+              <span className="text-sm font-semibold text-white truncate group-hover:text-[#E75A24] transition-colors">
+                {profile?.full_name ?? 'Admin'}
               </span>
               <span className="text-xs text-[#9DCAC2] font-medium">
                 Administrateur
               </span>
             </div>
-          </div>
+          </Link>
         </div>
       </aside>
     </>

@@ -12,7 +12,7 @@ import {
   User,
   X,
 } from 'lucide-react';
-import Avatar from '../ui/Avatar';
+import { useCurrentProfile } from '@/hooks/useCurrentProfile';
 
 interface SidebarEnseignantProps {
   isOpen?: boolean;
@@ -21,6 +21,7 @@ interface SidebarEnseignantProps {
 
 export function SidebarEnseignant({ isOpen = false, onClose }: SidebarEnseignantProps) {
   const pathname = usePathname();
+  const { profile, initials } = useCurrentProfile();
 
   const navItems = [
     {
@@ -144,11 +145,11 @@ export function SidebarEnseignant({ isOpen = false, onClose }: SidebarEnseignant
             title="Mon profil enseignant"
           >
             <div className="w-10 h-10 rounded-full bg-[#D6EADB] text-[#14443F] font-bold text-sm flex items-center justify-center shrink-0">
-              MD
+              {initials}
             </div>
             <div className="flex flex-col min-w-0 flex-1">
               <span className="text-sm font-semibold text-white truncate group-hover:text-[#E75A24] transition-colors">
-                M. Diop
+                {profile?.full_name ?? 'Enseignant'}
               </span>
               <span className="text-xs text-[#9DCAC2] font-medium">
                 Enseignant

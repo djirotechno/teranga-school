@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { getHomePathForRole, type UserRole } from '@/types/user';
 
 export default function ReinitialiserMotDePassePage() {
   const router = useRouter();
@@ -42,9 +43,20 @@ export default function ReinitialiserMotDePassePage() {
         return;
       }
 
+      const { data: userData } = await supabase.auth.getUser();
+      let target = '/accueil';
+      if (userData.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', userData.user.id)
+          .single();
+        target = getHomePathForRole(profile?.role as UserRole | undefined);
+      }
+
       setSuccess(true);
       setTimeout(() => {
-        router.push('/accueil');
+        router.push(target);
         router.refresh();
       }, 1500);
     } catch {

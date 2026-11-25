@@ -1031,9 +1031,9 @@ export type Database = {
       matiere_status: "disponible" | "bientot_disponible"
       niveau_scolaire:
         | "Terminale"
-        | "PremiÃ¨re"
+        | "Première"
         | "Seconde"
-        | "TroisiÃ¨me"
+        | "Troisième"
         | "Autre"
       paiement_methode: "wave" | "orange_money" | "manuel"
       publication_status: "brouillon" | "publie" | "archive"
@@ -1182,9 +1182,9 @@ export const Constants = {
       matiere_status: ["disponible", "bientot_disponible"],
       niveau_scolaire: [
         "Terminale",
-        "PremiÃ¨re",
+        "Première",
         "Seconde",
-        "TroisiÃ¨me",
+        "Troisième",
         "Autre",
       ],
       paiement_methode: ["wave", "orange_money", "manuel"],

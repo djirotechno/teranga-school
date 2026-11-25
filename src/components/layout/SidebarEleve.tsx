@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import Avatar from '../ui/Avatar';
 import Logo from '../ui/Logo';
+import { useCurrentProfile } from '@/hooks/useCurrentProfile';
 
 interface SidebarEleveProps {
   isOpen?: boolean;
@@ -22,6 +23,7 @@ interface SidebarEleveProps {
 
 export function SidebarEleve({ isOpen = false, onClose }: SidebarEleveProps) {
   const pathname = usePathname();
+  const { profile, initials } = useCurrentProfile();
 
   const navItems = [
     {
@@ -142,13 +144,13 @@ export function SidebarEleve({ isOpen = false, onClose }: SidebarEleveProps) {
             className="flex items-center gap-3 p-2.5 rounded-2xl bg-[#14443F] hover:bg-[#184F49] transition-colors cursor-pointer group"
             title="Accéder à mon profil"
           >
-            <Avatar initials="AD" size="md" variant="green" />
+            <Avatar initials={initials} size="md" variant="green" />
             <div className="flex flex-col min-w-0 flex-1">
               <span className="text-sm font-semibold text-white truncate group-hover:text-[#E75A24] transition-colors">
-                Awa Diop
+                {profile?.full_name ?? 'Mon espace'}
               </span>
               <span className="text-xs text-[#9DCAC2] font-medium">
-                Élève · Profil & Paramètres
+                {profile?.niveau ? `Élève · ${profile.niveau}${profile.serie ? ` ${profile.serie}` : ''}` : 'Élève · Profil & Paramètres'}
               </span>
             </div>
           </Link>
